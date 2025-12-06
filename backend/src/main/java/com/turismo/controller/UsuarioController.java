@@ -10,23 +10,28 @@ import com.turismo.dto.UsuarioResponseDTO;
 import com.turismo.model.Usuario;
 import com.turismo.service.UsuarioService;
 
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/auth")
-@RequiredArgsConstructor
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:4200")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
+    // ✅ Construtor manual (sem depender do Lombok)
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
+
     @PostMapping("/register")
-    public ResponseEntity<UsuarioResponseDTO> registrar(@RequestBody RegistroRequestDTO dto) {
+    public ResponseEntity<UsuarioResponseDTO> registrar(@Valid @RequestBody RegistroRequestDTO dto) {
         UsuarioResponseDTO usuarioCriado = usuarioService.registrar(dto);
         return ResponseEntity.ok(usuarioCriado);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO dto) {
+    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO dto) {
 
         Usuario usuario = usuarioService.buscarPorEmail(dto.getEmail());
 
@@ -39,7 +44,9 @@ public class UsuarioController {
         LoginResponseDTO response = new LoginResponseDTO(
             usuario.getId(),
             usuario.getNome(),
-            usuario.getEmail()
+            usuario.getEmail(),
+            usuario.getRole().name(),
+            "Login realizado com sucesso!"
         );
 
         return ResponseEntity.ok(response);

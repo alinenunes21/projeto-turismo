@@ -22,7 +22,7 @@ public class UserConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public BCryptPasswordEncoder passwordEncoder() {  // ✅ Mudei para BCryptPasswordEncoder
         return new BCryptPasswordEncoder();
     }
 }

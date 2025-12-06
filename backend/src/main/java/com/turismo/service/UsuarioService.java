@@ -7,17 +7,21 @@ import org.springframework.stereotype.Service;
 
 import com.turismo.dto.RegistroRequestDTO;
 import com.turismo.dto.UsuarioResponseDTO;
+import com.turismo.model.Role;
 import com.turismo.model.Usuario;
 import com.turismo.repository.UsuarioRepository;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    // ✅ Construtor manual (sem depender do Lombok)
+    public UsuarioService(UsuarioRepository usuarioRepository, BCryptPasswordEncoder passwordEncoder) {
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public UsuarioResponseDTO registrar(RegistroRequestDTO dto) {
 
@@ -25,21 +29,20 @@ public class UsuarioService {
             throw new RuntimeException("Email já cadastrado.");
         }
 
-        Usuario usuario = Usuario.builder()
-                .nome(dto.getNome())
-                .email(dto.getEmail())
-                .senhaHash(passwordEncoder.encode(dto.getSenha()))
-                .role("ROLE_USER")
-                .createdAt(LocalDateTime.now())
-                .build();
+        Usuario usuario = new Usuario();
+        usuario.setNome(dto.getNome());
+        usuario.setEmail(dto.getEmail());
+        usuario.setSenhaHash(passwordEncoder.encode(dto.getSenha()));
+        usuario.setRole(Role.ROLE_USER);
+        usuario.setCreatedAt(LocalDateTime.now());
 
-        usuarioRepository.save(usuario);
+        Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
         return new UsuarioResponseDTO(
-                usuario.getId(),
-                usuario.getNome(),
-                usuario.getEmail(),
-                usuario.getRole()
+                usuarioSalvo.getId(),
+                usuarioSalvo.getNome(),
+                usuarioSalvo.getEmail(),
+                usuarioSalvo.getRole().name()
         );
     }
 
