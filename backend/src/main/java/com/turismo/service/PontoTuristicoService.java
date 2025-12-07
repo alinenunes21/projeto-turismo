@@ -54,7 +54,19 @@ public class PontoTuristicoService {
         return converterParaDTO(ponto);
     }
 
-    public List<PontoTuristicoResponseDTO> listarTodos() {
+    // MÉTODO NOVO: listarTodos com filtros e paginação
+    public Page<PontoTuristicoResponseDTO> listarTodos(Pageable pageable, String cidade, String estado, String nome) {
+        if (cidade != null || estado != null || nome != null) {
+            return pontoRepository.findWithFilters(cidade, estado, nome, pageable)
+                    .map(this::converterParaDTO);
+        } else {
+            return pontoRepository.findAll(pageable)
+                    .map(this::converterParaDTO);
+        }
+    }
+
+    // MÉTODO NOVO: listarTodos sem paginação
+    public List<PontoTuristicoResponseDTO> listarTodosSemPaginacao() {
         return pontoRepository.findAll().stream()
                 .map(this::converterParaDTO)
                 .collect(Collectors.toList());
@@ -96,7 +108,8 @@ public class PontoTuristicoService {
         return converterParaDTO(pontoAtualizado);
     }
 
-    public void deletar(Long id) {
+    // MÉTODO AJUSTADO: deletar com usuarioId
+    public void deletar(Long id, Long usuarioId) {
         if (!pontoRepository.existsById(id)) {
             throw new RuntimeException("Ponto turístico não encontrado");
         }
