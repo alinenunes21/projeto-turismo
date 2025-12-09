@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +23,8 @@ import com.turismo.repository.FotoRepository;
 import com.turismo.repository.PontoTuristicoRepository;
 import com.turismo.repository.UsuarioRepository;
 
+
+@Slf4j
 @Service
 public class FotoService {
 
@@ -29,35 +32,38 @@ public class FotoService {
     private final PontoTuristicoRepository pontoTuristicoRepository;
     private final UsuarioRepository usuarioRepository;
 
-    // Diretório para salvar as fotos (configurável via application.yml)
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
     private static final List<String> TIPOS_PERMITIDOS = Arrays.asList(
-        "image/jpeg", "image/jpg", "image/png", "image/webp"
+            "image/jpeg", "image/jpg", "image/png", "image/webp"
     );
+
     private static final long TAMANHO_MAX = 5 * 1024 * 1024; // 5MB
     private static final int MAX_FOTOS_POR_PONTO = 10;
 
-    // Construtor manual
     public FotoService(FotoRepository fotoRepository,
-                      PontoTuristicoRepository pontoTuristicoRepository,
-                      UsuarioRepository usuarioRepository) {
+                       PontoTuristicoRepository pontoTuristicoRepository,
+                       UsuarioRepository usuarioRepository) {
         this.fotoRepository = fotoRepository;
         this.pontoTuristicoRepository = pontoTuristicoRepository;
         this.usuarioRepository = usuarioRepository;
     }
 
     public FotoResponseDTO upload(MultipartFile arquivo, Long pontoId, String titulo, Long usuarioId) {
-        // Validações
-        validarArquivo(arquivo);
-        validarPonto(pontoId);
-        validarLimiteFotos(pontoId);
+        log.info("Iniciando upload de foto - Ponto: {}, Usuario: {}", pontoId, usuarioId);
 
         try {
+            // Validações
+            validarArquivo(arquivo);
+            validarPonto(pontoId);
+            validarUsuario(usuarioId);
+            validarLimiteFotos(pontoId);
+
             // Criar diretório se não existir
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
+                log.info("Criando diretório de upload: {}", uploadPath);
                 Files.createDirectories(uploadPath);
             }
 
@@ -68,24 +74,30 @@ public class FotoService {
 
             // Salvar arquivo no filesystem
             Files.copy(arquivo.getInputStream(), caminhoArquivo);
+            log.info("Arquivo salvo: {}", caminhoArquivo);
 
             // Salvar metadados no MongoDB
             Foto foto = new Foto();
             foto.setPontoId(pontoId);
             foto.setUsuarioId(usuarioId);
             foto.setFilename(nomeArquivo);
-            foto.setTitulo(titulo != null ? titulo : "Sem título");
+            foto.setTitulo(titulo != null && !titulo.trim().isEmpty() ? titulo : "Sem título");
             foto.setPath(caminhoArquivo.toString());
             foto.setContentType(arquivo.getContentType());
             foto.setTamanho(arquivo.getSize());
             foto.setCreatedAt(LocalDateTime.now());
 
             Foto fotoSalva = fotoRepository.save(foto);
+            log.info("Foto salva no banco - ID: {}", fotoSalva.getId());
 
             return converterParaDTOComNome(fotoSalva);
 
         } catch (IOException e) {
+            log.error("Erro de I/O ao salvar arquivo", e);
             throw new RuntimeException("Erro ao salvar arquivo: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Erro inesperado ao fazer upload", e);
+            throw new RuntimeException("Erro ao processar upload: " + e.getMessage());
         }
     }
 
@@ -111,6 +123,7 @@ public class FotoService {
             Path caminhoArquivo = Paths.get(foto.getPath());
             return Files.readAllBytes(caminhoArquivo);
         } catch (IOException e) {
+            log.error("Erro ao ler arquivo: {}", filename, e);
             throw new RuntimeException("Erro ao ler arquivo: " + e.getMessage());
         }
     }
@@ -125,28 +138,24 @@ public class FotoService {
         Foto foto = fotoRepository.findById(fotoId)
                 .orElseThrow(() -> new RuntimeException("Foto não encontrada"));
 
-        // Verificar se o usuário é dono da foto (ou se é admin - implementar depois)
         if (!foto.getUsuarioId().equals(usuarioId)) {
             throw new RuntimeException("Você não pode deletar a foto de outro usuário");
         }
 
         try {
-            // Deletar arquivo do filesystem
             Path caminhoArquivo = Paths.get(foto.getPath());
             if (Files.exists(caminhoArquivo)) {
                 Files.delete(caminhoArquivo);
             }
-
-            // Deletar metadados do MongoDB
             fotoRepository.deleteById(fotoId);
-
         } catch (IOException e) {
+            log.error("Erro ao deletar arquivo: {}", fotoId, e);
             throw new RuntimeException("Erro ao deletar arquivo: " + e.getMessage());
         }
     }
 
     private void validarArquivo(MultipartFile arquivo) {
-        if (arquivo.isEmpty()) {
+        if (arquivo == null || arquivo.isEmpty()) {
             throw new RuntimeException("Arquivo não pode estar vazio");
         }
 
@@ -154,7 +163,8 @@ public class FotoService {
             throw new RuntimeException("Arquivo muito grande. Máximo: 5MB");
         }
 
-        if (!TIPOS_PERMITIDOS.contains(arquivo.getContentType())) {
+        String contentType = arquivo.getContentType();
+        if (contentType == null || !TIPOS_PERMITIDOS.contains(contentType)) {
             throw new RuntimeException("Tipo de arquivo não permitido. Use: JPG, PNG, WEBP");
         }
     }
@@ -162,6 +172,12 @@ public class FotoService {
     private void validarPonto(Long pontoId) {
         if (!pontoTuristicoRepository.existsById(pontoId)) {
             throw new RuntimeException("Ponto turístico não encontrado");
+        }
+    }
+
+    private void validarUsuario(Long usuarioId) {
+        if (!usuarioRepository.existsById(usuarioId)) {
+            throw new RuntimeException("Usuário não encontrado");
         }
     }
 
@@ -181,13 +197,14 @@ public class FotoService {
 
     private FotoResponseDTO converterParaDTO(Foto foto) {
         String url = "/api/fotos/arquivo/" + foto.getFilename();
-        String dataFormatada = foto.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        String dataFormatada = foto.getCreatedAt()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
         return new FotoResponseDTO(
                 foto.getId(),
                 foto.getPontoId(),
                 foto.getUsuarioId(),
-                null, // sem nome do usuário nesta versão
+                null,
                 foto.getFilename(),
                 foto.getTitulo(),
                 url,
@@ -203,7 +220,8 @@ public class FotoService {
                 .orElse("Usuário desconhecido");
 
         String url = "/api/fotos/arquivo/" + foto.getFilename();
-        String dataFormatada = foto.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        String dataFormatada = foto.getCreatedAt()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
         return new FotoResponseDTO(
                 foto.getId(),

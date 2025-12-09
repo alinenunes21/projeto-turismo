@@ -14,7 +14,7 @@ import com.turismo.service.FotoService;
 
 @RestController
 @RequestMapping("/api/fotos")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 public class FotoController {
 
     private final FotoService fotoService;

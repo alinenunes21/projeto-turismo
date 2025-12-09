@@ -32,7 +32,7 @@ public class Usuario {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role = Role.ROLE_USER;
+    private Role role = Role.USER;
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
