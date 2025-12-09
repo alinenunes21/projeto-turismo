@@ -18,13 +18,12 @@ public class PontoTuristicoService {
 
     private final PontoTuristicoRepository pontoRepository;
 
-    // Construtor manual
     public PontoTuristicoService(PontoTuristicoRepository pontoRepository) {
         this.pontoRepository = pontoRepository;
     }
 
     public PontoTuristicoResponseDTO criar(PontoTuristicoRequestDTO dto, Long usuarioId) {
-        
+
         // Verificar se já existe ponto com mesmo nome na cidade
         if (pontoRepository.existsByNomeIgnoreCaseAndCidadeIgnoreCase(dto.getNome(), dto.getCidade())) {
             throw new RuntimeException("Já existe um ponto turístico com este nome nesta cidade");
@@ -41,20 +40,21 @@ public class PontoTuristicoService {
         ponto.setEndereco(dto.getEndereco());
         ponto.setCriadoPor(usuarioId);
         ponto.setCreatedAt(LocalDateTime.now());
+        ponto.setNotaMedia(0.0);
+        ponto.setQuantidadeAvaliacoes(0L);
 
         PontoTuristico pontoSalvo = pontoRepository.save(ponto);
-        
+
         return converterParaDTO(pontoSalvo);
     }
 
     public PontoTuristicoResponseDTO buscarPorId(Long id) {
         PontoTuristico ponto = pontoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Ponto turístico não encontrado"));
-        
+
         return converterParaDTO(ponto);
     }
 
-    // MÉTODO NOVO: listarTodos com filtros e paginação
     public Page<PontoTuristicoResponseDTO> listarTodos(Pageable pageable, String cidade, String estado, String nome) {
         if (cidade != null || estado != null || nome != null) {
             return pontoRepository.findWithFilters(cidade, estado, nome, pageable)
@@ -65,7 +65,6 @@ public class PontoTuristicoService {
         }
     }
 
-    // MÉTODO NOVO: listarTodos sem paginação
     public List<PontoTuristicoResponseDTO> listarTodosSemPaginacao() {
         return pontoRepository.findAll().stream()
                 .map(this::converterParaDTO)
@@ -87,8 +86,8 @@ public class PontoTuristicoService {
                 .orElseThrow(() -> new RuntimeException("Ponto turístico não encontrado"));
 
         // Verificar se mudou nome/cidade e se já existe outro com esses dados
-        if (!ponto.getNome().equalsIgnoreCase(dto.getNome()) || 
-            !ponto.getCidade().equalsIgnoreCase(dto.getCidade())) {
+        if (!ponto.getNome().equalsIgnoreCase(dto.getNome()) ||
+                !ponto.getCidade().equalsIgnoreCase(dto.getCidade())) {
             if (pontoRepository.existsByNomeIgnoreCaseAndCidadeIgnoreCase(dto.getNome(), dto.getCidade())) {
                 throw new RuntimeException("Já existe um ponto turístico com este nome nesta cidade");
             }
@@ -104,11 +103,10 @@ public class PontoTuristicoService {
         ponto.setEndereco(dto.getEndereco());
 
         PontoTuristico pontoAtualizado = pontoRepository.save(ponto);
-        
+
         return converterParaDTO(pontoAtualizado);
     }
 
-    // MÉTODO AJUSTADO: deletar com usuarioId
     public void deletar(Long id, Long usuarioId) {
         if (!pontoRepository.existsById(id)) {
             throw new RuntimeException("Ponto turístico não encontrado");
@@ -128,7 +126,9 @@ public class PontoTuristicoService {
                 ponto.getLongitude(),
                 ponto.getEndereco(),
                 ponto.getCriadoPor(),
-                ponto.getCreatedAt()
+                ponto.getCreatedAt(),
+                ponto.getNotaMedia(),
+                ponto.getQuantidadeAvaliacoes()
         );
     }
 }

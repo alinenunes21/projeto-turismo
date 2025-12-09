@@ -32,7 +32,7 @@ public class PontoTuristico {
     private String pais = "Brasil";
 
     private Double latitude;
-    
+
     private Double longitude;
 
     private String endereco;
@@ -42,6 +42,12 @@ public class PontoTuristico {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "nota_media")
+    private Double notaMedia = 0.0;
+
+    @Column(name = "quantidade_avaliacoes")
+    private Long quantidadeAvaliacoes = 0L;
 
     // Construtores
     public PontoTuristico() {
@@ -53,9 +59,10 @@ public class PontoTuristico {
         this.cidade = cidade;
         this.estado = estado;
         this.createdAt = LocalDateTime.now();
+        this.notaMedia = 0.0;
+        this.quantidadeAvaliacoes = 0L;
     }
 
-    // Getters
     public Long getId() { return id; }
     public String getNome() { return nome; }
     public String getDescricao() { return descricao; }
@@ -67,6 +74,8 @@ public class PontoTuristico {
     public String getEndereco() { return endereco; }
     public Long getCriadoPor() { return criadoPor; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public Double getNotaMedia() { return notaMedia; }
+    public Long getQuantidadeAvaliacoes() { return quantidadeAvaliacoes; }
 
     // Setters
     public void setId(Long id) { this.id = id; }
@@ -80,4 +89,12 @@ public class PontoTuristico {
     public void setEndereco(String endereco) { this.endereco = endereco; }
     public void setCriadoPor(Long criadoPor) { this.criadoPor = criadoPor; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setNotaMedia(Double notaMedia) { this.notaMedia = notaMedia; }
+    public void setQuantidadeAvaliacoes(Long quantidadeAvaliacoes) { this.quantidadeAvaliacoes = quantidadeAvaliacoes; }
+
+    // Método auxiliar para atualizar a avaliação
+    public void atualizarAvaliacao(Double novaMedia, Long novaQuantidade) {
+        this.notaMedia = Math.round(novaMedia * 10.0) / 10.0; // Arredonda para 1 casa decimal
+        this.quantidadeAvaliacoes = novaQuantidade;
+    }
 }

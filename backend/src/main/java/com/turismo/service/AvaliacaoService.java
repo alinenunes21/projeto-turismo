@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.turismo.dto.AvaliacaoRequestDTO;
 import com.turismo.dto.AvaliacaoResponseDTO;
 import com.turismo.model.Avaliacao;
+import com.turismo.model.PontoTuristico;
 import com.turismo.model.Usuario;
 import com.turismo.repository.AvaliacaoRepository;
 import com.turismo.repository.PontoTuristicoRepository;
@@ -21,20 +23,19 @@ public class AvaliacaoService {
     private final PontoTuristicoRepository pontoTuristicoRepository;
     private final UsuarioRepository usuarioRepository;
 
-    // Construtor manual
-    public AvaliacaoService(AvaliacaoRepository avaliacaoRepository, 
-                           PontoTuristicoRepository pontoTuristicoRepository,
-                           UsuarioRepository usuarioRepository) {
+    public AvaliacaoService(AvaliacaoRepository avaliacaoRepository,
+                            PontoTuristicoRepository pontoTuristicoRepository,
+                            UsuarioRepository usuarioRepository) {
         this.avaliacaoRepository = avaliacaoRepository;
         this.pontoTuristicoRepository = pontoTuristicoRepository;
         this.usuarioRepository = usuarioRepository;
     }
 
+    @Transactional
     public AvaliacaoResponseDTO criarOuAtualizar(AvaliacaoRequestDTO dto, Long usuarioId) {
-        // Verificar se o ponto turístico existe
-        if (!pontoTuristicoRepository.existsById(dto.getPontoId())) {
-            throw new RuntimeException("Ponto turístico não encontrado");
-        }
+        // Buscar o ponto turístico
+        PontoTuristico ponto = pontoTuristicoRepository.findById(dto.getPontoId())
+                .orElseThrow(() -> new RuntimeException("Ponto turístico não encontrado"));
 
         // Verificar se o usuário já avaliou este ponto
         Avaliacao avaliacaoExistente = avaliacaoRepository
@@ -59,6 +60,9 @@ public class AvaliacaoService {
             avaliacao = avaliacaoRepository.save(avaliacao);
         }
 
+        // RECALCULAR E ATUALIZAR A MÉDIA DO PONTO TURÍSTICO
+        atualizarMediaPonto(ponto);
+
         return converterParaDTO(avaliacao);
     }
 
@@ -79,17 +83,18 @@ public class AvaliacaoService {
     public AvaliacaoResponseDTO buscarPorId(Long id) {
         Avaliacao avaliacao = avaliacaoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Avaliação não encontrada"));
-        
+
         return converterParaDTOComNome(avaliacao);
     }
 
     public AvaliacaoResponseDTO buscarAvaliacaoUsuario(Long pontoId, Long usuarioId) {
         Avaliacao avaliacao = avaliacaoRepository.findByPontoIdAndUsuarioId(pontoId, usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuário ainda não avaliou este ponto"));
-        
+
         return converterParaDTO(avaliacao);
     }
 
+    @Transactional
     public void deletar(Long id, Long usuarioId) {
         Avaliacao avaliacao = avaliacaoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Avaliação não encontrada"));
@@ -99,12 +104,36 @@ public class AvaliacaoService {
             throw new RuntimeException("Você não pode deletar a avaliação de outro usuário");
         }
 
+        Long pontoId = avaliacao.getPontoId();
         avaliacaoRepository.deleteById(id);
+
+        // RECALCULAR A MÉDIA APÓS DELETAR
+        PontoTuristico ponto = pontoTuristicoRepository.findById(pontoId)
+                .orElseThrow(() -> new RuntimeException("Ponto turístico não encontrado"));
+        atualizarMediaPonto(ponto);
+    }
+
+    // MÉTODO PARA ATUALIZAR A MÉDIA DO PONTO
+    private void atualizarMediaPonto(PontoTuristico ponto) {
+        Double media = avaliacaoRepository.calcularMediaNotas(ponto.getId());
+        Long quantidade = avaliacaoRepository.countByPontoId(ponto.getId());
+
+        ponto.atualizarAvaliacao(media != null ? media : 0.0, quantidade);
+        pontoTuristicoRepository.save(ponto);
+    }
+
+    // MÉTODO PÚBLICO PARA RECALCULAR TODAS AS MÉDIAS (útil para migração)
+    @Transactional
+    public void recalcularTodasAsMedias() {
+        List<PontoTuristico> pontos = pontoTuristicoRepository.findAll();
+        for (PontoTuristico ponto : pontos) {
+            atualizarMediaPonto(ponto);
+        }
     }
 
     public Double calcularMediaPonto(Long pontoId) {
         Double media = avaliacaoRepository.calcularMediaNotas(pontoId);
-        return media != null ? Math.round(media * 10.0) / 10.0 : 0.0; // Arredondar para 1 casa decimal
+        return media != null ? Math.round(media * 10.0) / 10.0 : 0.0;
     }
 
     public long contarAvaliacoesPonto(Long pontoId) {
@@ -123,7 +152,6 @@ public class AvaliacaoService {
     }
 
     private AvaliacaoResponseDTO converterParaDTOComNome(Avaliacao avaliacao) {
-        // Buscar nome do usuário
         String nomeUsuario = usuarioRepository.findById(avaliacao.getUsuarioId())
                 .map(Usuario::getNome)
                 .orElse("Usuário desconhecido");

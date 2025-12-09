@@ -14,15 +14,14 @@ public class PontoTuristicoResponseDTO {
     private String endereco;
     private Long criadoPor;
     private LocalDateTime createdAt;
-
-    // Construtor padrão
-    public PontoTuristicoResponseDTO() {
-    }
+    private Double notaMedia;
+    private Long quantidadeAvaliacoes;
 
     // Construtor completo
-    public PontoTuristicoResponseDTO(Long id, String nome, String descricao, String cidade, String estado, 
-                                    String pais, Double latitude, Double longitude, String endereco, 
-                                    Long criadoPor, LocalDateTime createdAt) {
+    public PontoTuristicoResponseDTO(Long id, String nome, String descricao, String cidade,
+                                     String estado, String pais, Double latitude, Double longitude,
+                                     String endereco, Long criadoPor, LocalDateTime createdAt,
+                                     Double notaMedia, Long quantidadeAvaliacoes) {
         this.id = id;
         this.nome = nome;
         this.descricao = descricao;
@@ -34,39 +33,55 @@ public class PontoTuristicoResponseDTO {
         this.endereco = endereco;
         this.criadoPor = criadoPor;
         this.createdAt = createdAt;
+        this.notaMedia = notaMedia;
+        this.quantidadeAvaliacoes = quantidadeAvaliacoes;
     }
 
-    // Construtor simplificado para listagem
-    public PontoTuristicoResponseDTO(Long id, String nome, String cidade, String estado) {
-        this.id = id;
-        this.nome = nome;
-        this.cidade = cidade;
-        this.estado = estado;
+    // Construtor sem avaliações (para compatibilidade)
+    public PontoTuristicoResponseDTO(Long id, String nome, String descricao, String cidade,
+                                     String estado, String pais, Double latitude, Double longitude,
+                                     String endereco, Long criadoPor, LocalDateTime createdAt) {
+        this(id, nome, descricao, cidade, estado, pais, latitude, longitude,
+                endereco, criadoPor, createdAt, 0.0, 0L);
     }
 
-    // Getters
+    // Getters e Setters
     public Long getId() { return id; }
-    public String getNome() { return nome; }
-    public String getDescricao() { return descricao; }
-    public String getCidade() { return cidade; }
-    public String getEstado() { return estado; }
-    public String getPais() { return pais; }
-    public Double getLatitude() { return latitude; }
-    public Double getLongitude() { return longitude; }
-    public String getEndereco() { return endereco; }
-    public Long getCriadoPor() { return criadoPor; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-
-    // Setters
     public void setId(Long id) { this.id = id; }
+
+    public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
+
+    public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+
+    public String getCidade() { return cidade; }
     public void setCidade(String cidade) { this.cidade = cidade; }
+
+    public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }
+
+    public String getPais() { return pais; }
     public void setPais(String pais) { this.pais = pais; }
+
+    public Double getLatitude() { return latitude; }
     public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public String getEndereco() { return endereco; }
     public void setEndereco(String endereco) { this.endereco = endereco; }
+
+    public Long getCriadoPor() { return criadoPor; }
     public void setCriadoPor(Long criadoPor) { this.criadoPor = criadoPor; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public Double getNotaMedia() { return notaMedia; }
+    public void setNotaMedia(Double notaMedia) { this.notaMedia = notaMedia; }
+
+    public Long getQuantidadeAvaliacoes() { return quantidadeAvaliacoes; }
+    public void setQuantidadeAvaliacoes(Long quantidadeAvaliacoes) { this.quantidadeAvaliacoes = quantidadeAvaliacoes; }
 }

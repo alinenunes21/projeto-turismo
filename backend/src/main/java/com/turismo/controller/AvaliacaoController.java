@@ -20,24 +20,20 @@ public class AvaliacaoController {
 
     private final AvaliacaoService avaliacaoService;
 
-    // Construtor manual
     public AvaliacaoController(AvaliacaoService avaliacaoService) {
         this.avaliacaoService = avaliacaoService;
     }
 
-    // POST /api/avaliacoes - Criar/atualizar avaliação
     @PostMapping
     public ResponseEntity<AvaliacaoResponseDTO> criarAvaliacao(
             @Valid @RequestBody AvaliacaoRequestDTO dto) {
         
-        // Por enquanto, usuário fixo (depois implementamos autenticação real)
         Long usuarioId = 1L;
         
         AvaliacaoResponseDTO avaliacaoDto = avaliacaoService.criarOuAtualizar(dto, usuarioId);
         return ResponseEntity.status(HttpStatus.CREATED).body(avaliacaoDto);
     }
 
-    // GET /api/avaliacoes/ponto/{pontoId} - Listar avaliações de um ponto
     @GetMapping("/ponto/{pontoId}")
     public ResponseEntity<List<AvaliacaoResponseDTO>> listarPorPonto(@PathVariable Long pontoId) {
         List<AvaliacaoResponseDTO> avaliacoes = avaliacaoService.listarPorPonto(pontoId);
